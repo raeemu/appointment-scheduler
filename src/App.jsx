@@ -24,11 +24,25 @@ function getToday() {
 export default function App() {
   const [date, setDate] = useState(getToday())
   const [selectedSlot, setSelectedSlot] = useState('')
+
   const [form, setForm] = useState({
     name: '',
     email: '',
     phone: '',
   })
+
+  const [errors, setErrors] = useState({
+    name: '',
+    email: '',
+    phone: '',
+  })
+
+  const [touched, setTouched] = useState({
+    name: false,
+    email: false,
+    phone: false,
+  })
+
   const [appointments, setAppointments] = useState([])
 
   useEffect(() => {
@@ -48,16 +62,89 @@ export default function App() {
       .map((item) => item.time)
   }, [appointments, date])
 
-  const handleInput = (e) => {
+  const validateField = (name, value) => {
+    const trimmed = typeof value === 'string' ? value.trim() : value
+
+    switch (name) {
+      case 'name': {
+        if (!trimmed) return 'Укажите имя'
+        const nameRegex = /^[A-Za-zА-Яа-яЁё\s-]+$/
+        if (!nameRegex.test(trimmed)) {
+          return 'Некорректное имя. Разрешены только буквы, пробелы и дефисы.'
+        }
+        return ''
+      }
+      case 'email': {
+        if (!trimmed) return 'Укажите email'
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(trimmed)) return 'Некорректный email. Пример: example@example.com'
+        return ''
+      }
+      case 'phone': {
+        if (!trimmed) return 'Укажите телефон'
+        const phoneRegex = /^\+?\d{7,15}$/
+        if (!phoneRegex.test(trimmed)) {
+          return 'Некорректный телефон. Разрешены только цифры и знак +, от 7 до 15 символов.'
+        }
+        return ''
+      }
+      default:
+        return ''
+    }
+  }
+
+  const validateForm = () => {
+    const newErrors = {
+      name: validateField('name', form.name),
+      email: validateField('email', form.email),
+      phone: validateField('phone', form.phone),
+    }
+
+    setErrors(newErrors)
+    setTouched({
+      name: true,
+      email: true,
+      phone: true,
+    })
+
+    return !newErrors.name && !newErrors.email && !newErrors.phone
+  }
+
+  const handleInputChange = (e) => {
     const { name, value } = e.target
-    setForm((prev) => ({ ...prev, [name]: value }))
+
+    let newValue = value
+
+    if (name === 'phone') {
+      newValue = value.replace(/[^\d+]/g, '')
+    }
+
+    setForm((prev) => ({ ...prev, [name]: newValue }))
+
+    if (touched[name]) {
+      const error = validateField(name, newValue)
+      setErrors((prev) => ({ ...prev, [name]: error }))
+    }
+  }
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target
+
+    setTouched((prev) => ({ ...prev, [name]: true }))
+
+    const error = validateField(name, value)
+    setErrors((prev) => ({ ...prev, [name]: error }))
   }
 
   const handleSubmit = (e) => {
     e.preventDefault()
 
-    if (!date || !selectedSlot || !form.name || !form.email || !form.phone) {
-      alert('Заполни все поля и выбери слот')
+    if (!date || !selectedSlot) {
+      alert('Выбери дату и слот')
+      return
+    }
+
+    if (!validateForm()) {
       return
     }
 
@@ -74,12 +161,16 @@ export default function App() {
       id: crypto.randomUUID(),
       date,
       time: selectedSlot,
-      ...form,
+      name: form.name.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim(),
     }
 
     setAppointments((prev) => [...prev, newAppointment])
     setSelectedSlot('')
     setForm({ name: '', email: '', phone: '' })
+    setTouched({ name: false, email: false, phone: false })
+    setErrors({ name: '', email: '', phone: '' })
     alert('Запись успешно создана')
   }
 
@@ -87,11 +178,13 @@ export default function App() {
     setAppointments((prev) => prev.filter((item) => item.id !== id))
   }
 
-  const sortedAppointments = [...appointments].sort((a, b) => {
-    const left = `${a.date} ${a.time}`
-    const right = `${b.date} ${b.time}`
-    return left.localeCompare(right)
-  })
+  const sortedAppointments = useMemo(() => {
+    return [...appointments].sort((a, b) => {
+      const left = `${a.date} ${a.time}`
+      const right = `${b.date} ${b.time}`
+      return left.localeCompare(right)
+    })
+  }, [appointments])
 
   return (
     <div className="page">
@@ -143,23 +236,45 @@ export default function App() {
             name="name"
             placeholder="Имя"
             value={form.name}
-            onChange={handleInput}
+            onChange={handleInputChange}
+            onBlur={handleBlur}
+            className={
+              errors.name && touched.name ? 'input error' : 'input'
+            }
           />
+          {errors.name && touched.name && (
+            <p className="error-text">{errors.name}</p>
+          )}
 
           <input
             name="email"
             type="email"
             placeholder="Email"
             value={form.email}
-            onChange={handleInput}
+            onChange={handleInputChange}
+            onBlur={handleBlur}
+            className={
+              errors.email && touched.email ? 'input error' : 'input'
+            }
           />
+          {errors.email && touched.email && (
+            <p className="error-text">{errors.email}</p>
+          )}
 
           <input
             name="phone"
             placeholder="Телефон"
             value={form.phone}
-            onChange={handleInput}
+            onChange={handleInputChange}
+            onBlur={handleBlur}
+            inputMode="tel"
+            className={
+              errors.phone && touched.phone ? 'input error' : 'input'
+            }
           />
+          {errors.phone && touched.phone && (
+            <p className="error-text">{errors.phone}</p>
+          )}
 
           <button className="submit" type="submit">
             Подтвердить запись
