@@ -15,7 +15,7 @@ npm install
 npm run dev
 ```
 ## Deploy link 
-(https://appointment-scheduler-sable-seven.vercel.app/)
+https://appointment-scheduler-sable-seven.vercel.app
 
 ## Code-climate maintainability
 [![Maintainability](https://qlty.sh/gh/raeemu/projects/appointment-scheduler/maintainability.svg)](https://qlty.sh/gh/raeemu/projects/appointment-scheduler)
